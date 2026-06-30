@@ -1,0 +1,4 @@
+profile_id = "my.agent.profile"
+default_model = "mock"
+max_steps = 8
+tools = []

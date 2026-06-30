@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mutsuki.agent-run.v1",
+  "type": "object",
+  "required": ["profile_id", "messages"],
+  "properties": {
+    "profile_id": { "type": "string", "minLength": 1 },
+    "messages": { "type": "array", "items": { "$ref": "../agent-message/v1.schema.json" } },
+    "session_id": { "type": ["string", "null"] },
+    "max_steps": { "type": "integer", "minimum": 0, "default": 8 },
+    "stream": { "type": "boolean", "default": false },
+    "model": { "type": ["string", "null"] },
+    "metadata": true
+  }
+}

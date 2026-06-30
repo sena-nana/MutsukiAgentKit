@@ -1,0 +1,52 @@
+[workspace]
+members = [
+    "crates/mutsuki-agent-protocol",
+    "crates/mutsuki-agent-sdk",
+    "crates/mutsuki-agent-macros",
+    "crates/mutsuki-plugin-agent-loop",
+    "crates/mutsuki-plugin-agent-context",
+    "crates/mutsuki-plugin-agent-tool-router",
+    "crates/mutsuki-plugin-agent-session",
+    "crates/mutsuki-plugin-agent-memory-router",
+    "crates/mutsuki-plugin-agent-model-gateway",
+    "crates/mutsuki-plugin-agent-prompt",
+    "crates/mutsuki-agent-testkit",
+]
+resolver = "2"
+exclude = [
+    "examples/simple-chat-agent",
+    "examples/rust-agent-tool",
+    "examples/rust-model-provider",
+    "templates/rust-agent-tool",
+    "templates/rust-model-provider",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+license = "MIT"
+
+[workspace.dependencies]
+mutsuki-agent-protocol = { path = "crates/mutsuki-agent-protocol" }
+mutsuki-agent-sdk = { path = "crates/mutsuki-agent-sdk" }
+mutsuki-agent-macros = { path = "crates/mutsuki-agent-macros" }
+mutsuki-runtime-sdk = { path = "../NanoBot/crates/mutsuki-runtime-sdk" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+thiserror = "2.0"
+proc-macro2 = "1.0"
+quote = "1.0"
+syn = { version = "2.0", features = ["full", "parsing"] }
+
+[profile.dev]
+debug = "line-tables-only"
+incremental = true
+
+[profile.dev.package."*"]
+opt-level = 1
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+debug = "line-tables-only"
+strip = "debuginfo"

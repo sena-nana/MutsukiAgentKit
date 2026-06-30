@@ -1,0 +1,14 @@
+plugin_id = "mutsuki.plugin.agent.context"
+version = "0.1.0"
+api_version = "mutsuki-plugin-v1"
+
+provides = [
+  "mutsuki.agent.context/build@1",
+]
+
+consumes = [
+  "mutsuki.agent.session/get@1",
+  "mutsuki.agent.memory/query@1",
+  "mutsuki.agent.tool/list@1",
+  "mutsuki.agent.prompt/render@1",
+]

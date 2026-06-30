@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "mutsuki.agent-model.v1",
+  "type": "object",
+  "required": ["model", "messages"],
+  "properties": {
+    "model": { "type": "string", "minLength": 1 },
+    "messages": { "type": "array", "items": { "$ref": "../agent-message/v1.schema.json" } },
+    "temperature": { "type": ["number", "null"] },
+    "max_output_tokens": { "type": ["integer", "null"] },
+    "provider_hint": { "type": ["string", "null"] },
+    "metadata": true
+  }
+}
