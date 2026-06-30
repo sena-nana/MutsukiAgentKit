@@ -1,7 +1,7 @@
 use mutsuki_agent_protocol::*;
 use mutsuki_agent_sdk::{
-    AgentPromptGetProtocol, AgentPromptRenderProtocol, orchestration_runner, result_event,
-    runtime_failure, task_payload,
+    AgentPromptGetProtocol, AgentPromptRenderProtocol, orchestration_runner, service_result_event,
+    unsupported_protocol,
 };
 use mutsuki_runtime_sdk::contracts::{RunnerResult, Task};
 use mutsuki_runtime_sdk::{AsyncRunnerAdapter, PluginBuilder, RuntimeClientRef, RuntimeResult};
@@ -35,20 +35,18 @@ pub fn runner(client: RuntimeClientRef, registry: PromptRegistry) -> AsyncRunner
 
 async fn run_task(registry: PromptRegistry, task: Task) -> RuntimeResult<RunnerResult> {
     match task.protocol_id.as_str() {
-        AGENT_PROMPT_RENDER_PROTOCOL => {
-            let request: AgentPromptRenderRequest = task_payload(PLUGIN_ID, &task)?;
-            let result = registry
-                .render(request)
-                .map_err(|error| runtime_failure(PLUGIN_ID, &task.task_id, error))?;
-            result_event(task.task_id, "mutsuki.agent.prompt.rendered", result)
-        }
-        AGENT_PROMPT_GET_PROTOCOL => {
-            let request: AgentPromptGetRequest = task_payload(PLUGIN_ID, &task)?;
-            let result = registry
-                .get(request)
-                .map_err(|error| runtime_failure(PLUGIN_ID, &task.task_id, error))?;
-            result_event(task.task_id, "mutsuki.agent.prompt.loaded", result)
-        }
-        _ => Ok(RunnerResult::completed(task.task_id)),
+        AGENT_PROMPT_RENDER_PROTOCOL => service_result_event(
+            PLUGIN_ID,
+            &task,
+            "mutsuki.agent.prompt.rendered",
+            |request: AgentPromptRenderRequest| registry.render(request),
+        ),
+        AGENT_PROMPT_GET_PROTOCOL => service_result_event(
+            PLUGIN_ID,
+            &task,
+            "mutsuki.agent.prompt.loaded",
+            |request: AgentPromptGetRequest| registry.get(request),
+        ),
+        _ => Err(unsupported_protocol(PLUGIN_ID, &task)),
     }
 }

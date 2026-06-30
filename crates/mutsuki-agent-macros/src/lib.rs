@@ -3,7 +3,7 @@ use quote::{format_ident, quote};
 use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
 use syn::{
-    Expr, ExprArray, ExprLit, ItemFn, ItemStruct, Lit, LitBool, MetaNameValue, Token,
+    Expr, ExprArray, ExprLit, ExprPath, ItemFn, ItemStruct, Lit, LitBool, MetaNameValue, Token,
     parse_macro_input,
 };
 
@@ -60,7 +60,7 @@ pub fn agent_profile(args: TokenStream, input: TokenStream) -> TokenStream {
 
 struct AgentToolAttrs {
     name: String,
-    target: String,
+    target: proc_macro2::TokenStream,
     description: String,
     side_effect: proc_macro2::TokenStream,
     requires_approval: bool,
@@ -81,7 +81,7 @@ impl Parse for AgentToolAttrs {
             let key = pair.path.get_ident().map(|ident| ident.to_string());
             match key.as_deref() {
                 Some("name") => name = Some(string_expr(&pair.value)?),
-                Some("target") => target = Some(string_expr(&pair.value)?),
+                Some("target") => target = Some(tool_target_expr(&pair.value)?),
                 Some("description") => description = Some(string_expr(&pair.value)?),
                 Some("requires_approval") => requires_approval = bool_expr(&pair.value)?,
                 Some("permissions") => permissions = string_array_expr(&pair.value)?,
@@ -178,6 +178,25 @@ fn string_expr(expr: &Expr) -> syn::Result<String> {
             ..
         }) => Ok(value.value()),
         _ => Err(syn::Error::new_spanned(expr, "expected string literal")),
+    }
+}
+
+fn tool_target_expr(expr: &Expr) -> syn::Result<proc_macro2::TokenStream> {
+    match expr {
+        Expr::Lit(ExprLit {
+            lit: Lit::Str(value),
+            ..
+        }) => {
+            let target = value.value();
+            Ok(quote!(#target))
+        }
+        Expr::Path(ExprPath { path, .. }) => {
+            Ok(quote!(<#path as ::mutsuki_agent_sdk::SdkProtocol>::PROTOCOL_ID))
+        }
+        _ => Err(syn::Error::new_spanned(
+            expr,
+            "expected string literal or SDK protocol marker path",
+        )),
     }
 }
 

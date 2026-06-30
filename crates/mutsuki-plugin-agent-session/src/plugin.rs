@@ -1,8 +1,7 @@
 use mutsuki_agent_protocol::*;
 use mutsuki_agent_sdk::{
     AgentSessionAppendProtocol, AgentSessionCreateProtocol, AgentSessionGetProtocol,
-    AgentSessionSnapshotProtocol, orchestration_runner, result_event, runtime_failure,
-    task_payload,
+    AgentSessionSnapshotProtocol, orchestration_runner, service_result_event, unsupported_protocol,
 };
 use mutsuki_runtime_sdk::contracts::{RunnerResult, Task};
 use mutsuki_runtime_sdk::{AsyncRunnerAdapter, PluginBuilder, RuntimeClientRef, RuntimeResult};
@@ -40,46 +39,30 @@ pub fn runner(client: RuntimeClientRef, store: SessionStore) -> AsyncRunnerAdapt
 
 async fn run_task(store: SessionStore, task: Task) -> RuntimeResult<RunnerResult> {
     match task.protocol_id.as_str() {
-        AGENT_SESSION_CREATE_PROTOCOL => {
-            let request: AgentSessionCreateRequest = task_payload(PLUGIN_ID, &task)?;
-            result_event(
-                task.task_id,
-                "mutsuki.agent.session.created",
-                store
-                    .create(request)
-                    .map_err(|error| runtime_failure(PLUGIN_ID, "agent.session.create", error))?,
-            )
-        }
-        AGENT_SESSION_GET_PROTOCOL => {
-            let request: AgentSessionGetRequest = task_payload(PLUGIN_ID, &task)?;
-            result_event(
-                task.task_id,
-                "mutsuki.agent.session.loaded",
-                store
-                    .get(request)
-                    .map_err(|error| runtime_failure(PLUGIN_ID, "agent.session.get", error))?,
-            )
-        }
-        AGENT_SESSION_APPEND_PROTOCOL => {
-            let request: AgentSessionAppendRequest = task_payload(PLUGIN_ID, &task)?;
-            result_event(
-                task.task_id,
-                "mutsuki.agent.session.appended",
-                store
-                    .append(request)
-                    .map_err(|error| runtime_failure(PLUGIN_ID, "agent.session.append", error))?,
-            )
-        }
-        AGENT_SESSION_SNAPSHOT_PROTOCOL => {
-            let request: AgentSessionSnapshotRequest = task_payload(PLUGIN_ID, &task)?;
-            result_event(
-                task.task_id,
-                "mutsuki.agent.session.snapshot",
-                store
-                    .snapshot(request)
-                    .map_err(|error| runtime_failure(PLUGIN_ID, "agent.session.snapshot", error))?,
-            )
-        }
-        _ => Ok(RunnerResult::completed(task.task_id)),
+        AGENT_SESSION_CREATE_PROTOCOL => service_result_event(
+            PLUGIN_ID,
+            &task,
+            "mutsuki.agent.session.created",
+            |request: AgentSessionCreateRequest| store.create(request),
+        ),
+        AGENT_SESSION_GET_PROTOCOL => service_result_event(
+            PLUGIN_ID,
+            &task,
+            "mutsuki.agent.session.loaded",
+            |request: AgentSessionGetRequest| store.get(request),
+        ),
+        AGENT_SESSION_APPEND_PROTOCOL => service_result_event(
+            PLUGIN_ID,
+            &task,
+            "mutsuki.agent.session.appended",
+            |request: AgentSessionAppendRequest| store.append(request),
+        ),
+        AGENT_SESSION_SNAPSHOT_PROTOCOL => service_result_event(
+            PLUGIN_ID,
+            &task,
+            "mutsuki.agent.session.snapshot",
+            |request: AgentSessionSnapshotRequest| store.snapshot(request),
+        ),
+        _ => Err(unsupported_protocol(PLUGIN_ID, &task)),
     }
 }

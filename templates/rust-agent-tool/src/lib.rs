@@ -12,9 +12,15 @@ pub struct ToolOutput {
     pub text: String,
 }
 
+pub struct ToolProtocol;
+
+impl SdkProtocol for ToolProtocol {
+    const PROTOCOL_ID: &'static str = "my.tool/run@1";
+}
+
 #[agent_tool(
     name = "my.tool",
-    target = "my.tool/run@1",
+    target = ToolProtocol,
     description = "Template Agent tool",
     side_effect = "none",
     requires_approval = false,

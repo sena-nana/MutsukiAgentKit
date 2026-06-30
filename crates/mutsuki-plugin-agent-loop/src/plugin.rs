@@ -1,7 +1,7 @@
 use mutsuki_agent_protocol::*;
 use mutsuki_agent_sdk::{
-    AgentLoopStepProtocol, AgentRunProtocol, orchestration_runner, result_event, runtime_failure,
-    task_payload,
+    AgentLoopStepProtocol, AgentRunProtocol, orchestration_runner, service_result_event,
+    unsupported_protocol,
 };
 use mutsuki_runtime_sdk::contracts::{RunnerResult, Task};
 use mutsuki_runtime_sdk::{AsyncRunnerAdapter, PluginBuilder, RuntimeClientRef, RuntimeResult};
@@ -15,10 +15,6 @@ pub fn plugin(client: RuntimeClientRef, agent_loop: AgentLoop) -> PluginBuilder 
     PluginBuilder::new(PLUGIN_ID)
         .protocol::<AgentRunProtocol>()
         .protocol::<AgentLoopStepProtocol>()
-        .requires(AGENT_CONTEXT_BUILD_PROTOCOL)
-        .requires(AGENT_MODEL_GENERATE_PROTOCOL)
-        .requires(AGENT_TOOL_EXECUTE_PROTOCOL)
-        .requires(AGENT_SESSION_APPEND_PROTOCOL)
         .runner(Box::new(runner(client, agent_loop)))
 }
 
@@ -39,20 +35,18 @@ pub fn runner(client: RuntimeClientRef, agent_loop: AgentLoop) -> AsyncRunnerAda
 
 async fn run_task(agent_loop: AgentLoop, task: Task) -> RuntimeResult<RunnerResult> {
     match task.protocol_id.as_str() {
-        AGENT_RUN_PROTOCOL => {
-            let request: AgentRunRequest = task_payload(PLUGIN_ID, &task)?;
-            let result = agent_loop
-                .run(request)
-                .map_err(|error| runtime_failure(PLUGIN_ID, &task.task_id, error))?;
-            result_event(task.task_id, "mutsuki.agent.run.completed", result)
-        }
-        AGENT_LOOP_STEP_PROTOCOL => {
-            let request: AgentLoopStepRequest = task_payload(PLUGIN_ID, &task)?;
-            let result = agent_loop
-                .step(request)
-                .map_err(|error| runtime_failure(PLUGIN_ID, &task.task_id, error))?;
-            result_event(task.task_id, "mutsuki.agent.loop.step_completed", result)
-        }
-        _ => Ok(RunnerResult::completed(task.task_id)),
+        AGENT_RUN_PROTOCOL => service_result_event(
+            PLUGIN_ID,
+            &task,
+            "mutsuki.agent.run.completed",
+            |request: AgentRunRequest| agent_loop.run(request),
+        ),
+        AGENT_LOOP_STEP_PROTOCOL => service_result_event(
+            PLUGIN_ID,
+            &task,
+            "mutsuki.agent.loop.step_completed",
+            |request: AgentLoopStepRequest| agent_loop.step(request),
+        ),
+        _ => Err(unsupported_protocol(PLUGIN_ID, &task)),
     }
 }

@@ -12,9 +12,15 @@ pub struct EchoOutput {
     pub text: String,
 }
 
+pub struct EchoProtocol;
+
+impl SdkProtocol for EchoProtocol {
+    const PROTOCOL_ID: &'static str = "example.echo/run@1";
+}
+
 #[agent_tool(
     name = "example.echo",
-    target = "example.echo/run@1",
+    target = EchoProtocol,
     description = "Echo text for Agent examples",
     side_effect = "none",
     requires_approval = false,

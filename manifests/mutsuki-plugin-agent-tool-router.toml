@@ -6,7 +6,3 @@ provides = [
   "mutsuki.agent.tool/list@1",
   "mutsuki.agent.tool/execute@1",
 ]
-
-consumes = [
-  "agent_tool target protocols declared by registered Rust plugins",
-]

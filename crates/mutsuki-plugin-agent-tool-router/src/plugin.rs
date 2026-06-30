@@ -1,7 +1,7 @@
 use mutsuki_agent_protocol::*;
 use mutsuki_agent_sdk::{
     AgentToolExecuteProtocol, AgentToolListProtocol, orchestration_runner, result_event,
-    runtime_failure, task_payload,
+    runtime_failure, service_result_event, task_payload, unsupported_protocol,
 };
 use mutsuki_runtime_sdk::contracts::{RunnerResult, Task, TaskOutcome};
 use mutsuki_runtime_sdk::{
@@ -42,14 +42,12 @@ async fn run_task(
     task: Task,
 ) -> RuntimeResult<RunnerResult> {
     match task.protocol_id.as_str() {
-        AGENT_TOOL_LIST_PROTOCOL => {
-            let request: AgentToolListRequest = task_payload(PLUGIN_ID, &task)?;
-            result_event(
-                task.task_id,
-                "mutsuki.agent.tool.listed",
-                registry.list(request),
-            )
-        }
+        AGENT_TOOL_LIST_PROTOCOL => service_result_event(
+            PLUGIN_ID,
+            &task,
+            "mutsuki.agent.tool.listed",
+            |request: AgentToolListRequest| Ok(registry.list(request)),
+        ),
         AGENT_TOOL_EXECUTE_PROTOCOL => {
             let request: AgentToolExecuteRequest = task_payload(PLUGIN_ID, &task)?;
             let descriptor = registry
@@ -71,7 +69,7 @@ async fn run_task(
             let result = tool_result(request.name, outcome);
             result_event(task.task_id, "mutsuki.agent.tool.executed", result)
         }
-        _ => Ok(RunnerResult::completed(task.task_id)),
+        _ => Err(unsupported_protocol(PLUGIN_ID, &task)),
     }
 }
 

@@ -1,6 +1,7 @@
 use serde_json::Value;
 
 use mutsuki_agent_protocol::{AgentToolDescriptor, ToolSideEffect};
+use mutsuki_runtime_sdk::SdkProtocol;
 
 #[derive(Clone, Debug)]
 pub struct ToolBuilder {
@@ -16,6 +17,21 @@ impl ToolBuilder {
         Self {
             descriptor: AgentToolDescriptor::new(name, target_protocol_id, description),
         }
+    }
+
+    pub fn for_protocol<P>(name: impl Into<String>, description: impl Into<String>) -> Self
+    where
+        P: SdkProtocol,
+    {
+        Self::new(name, P::PROTOCOL_ID, description)
+    }
+
+    pub fn target_protocol<P>(mut self) -> Self
+    where
+        P: SdkProtocol,
+    {
+        self.descriptor.target_protocol_id = P::PROTOCOL_ID.into();
+        self
     }
 
     pub fn input_schema(mut self, schema: Value) -> Self {

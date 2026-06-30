@@ -1,7 +1,6 @@
 use mutsuki_agent_protocol::*;
 use mutsuki_agent_sdk::{
-    AgentModelGenerateProtocol, AgentModelStreamProtocol, orchestration_runner, result_event,
-    runtime_failure, task_payload,
+    AgentModelGenerateProtocol, orchestration_runner, service_result_event, unsupported_protocol,
 };
 use mutsuki_runtime_sdk::contracts::{RunnerResult, Task};
 use mutsuki_runtime_sdk::{AsyncRunnerAdapter, PluginBuilder, RuntimeClientRef, RuntimeResult};
@@ -14,14 +13,12 @@ pub const RUNNER_ID: &str = "mutsuki.agent.model_gateway.runner";
 pub fn plugin(client: RuntimeClientRef, gateway: ModelGateway) -> PluginBuilder {
     PluginBuilder::new(PLUGIN_ID)
         .protocol::<AgentModelGenerateProtocol>()
-        .protocol::<AgentModelStreamProtocol>()
         .runner(Box::new(runner(client, gateway)))
 }
 
 pub fn runner(client: RuntimeClientRef, gateway: ModelGateway) -> AsyncRunnerAdapter {
     let descriptor = orchestration_runner(RUNNER_ID, PLUGIN_ID)
         .accepts::<AgentModelGenerateProtocol>()
-        .accepts::<AgentModelStreamProtocol>()
         .build();
     AsyncRunnerAdapter::new(
         descriptor,
@@ -35,20 +32,12 @@ pub fn runner(client: RuntimeClientRef, gateway: ModelGateway) -> AsyncRunnerAda
 
 async fn run_task(gateway: ModelGateway, task: Task) -> RuntimeResult<RunnerResult> {
     match task.protocol_id.as_str() {
-        AGENT_MODEL_GENERATE_PROTOCOL => {
-            let request: AgentModelGenerateRequest = task_payload(PLUGIN_ID, &task)?;
-            let result = gateway
-                .generate(request)
-                .map_err(|error| runtime_failure(PLUGIN_ID, &task.task_id, error))?;
-            result_event(task.task_id, "mutsuki.agent.model.generated", result)
-        }
-        AGENT_MODEL_STREAM_PROTOCOL => {
-            let request: AgentModelStreamRequest = task_payload(PLUGIN_ID, &task)?;
-            let result = gateway
-                .generate(request.request)
-                .map_err(|error| runtime_failure(PLUGIN_ID, &task.task_id, error))?;
-            result_event(task.task_id, "mutsuki.agent.model.stream.completed", result)
-        }
-        _ => Ok(RunnerResult::completed(task.task_id)),
+        AGENT_MODEL_GENERATE_PROTOCOL => service_result_event(
+            PLUGIN_ID,
+            &task,
+            "mutsuki.agent.model.generated",
+            |request: AgentModelGenerateRequest| gateway.generate(request),
+        ),
+        _ => Err(unsupported_protocol(PLUGIN_ID, &task)),
     }
 }

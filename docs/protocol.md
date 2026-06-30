@@ -17,6 +17,5 @@ The MVP surface is:
 - `mutsuki.agent.memory/write@1`
 - `mutsuki.agent.memory/activate@1`
 - `mutsuki.agent.model/generate@1`
-- `mutsuki.agent.model/stream@1`
 - `mutsuki.agent.prompt/render@1`
 - `mutsuki.agent.prompt/get@1`

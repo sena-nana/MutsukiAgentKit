@@ -3,6 +3,8 @@ use serde_json::Value;
 
 use crate::{AgentMessage, AgentUsage};
 
+pub const DEFAULT_MAX_STEPS: u32 = 8;
+
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AgentRunStatus {
@@ -27,6 +29,20 @@ pub struct AgentRunRequest {
     pub model: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub metadata: Option<Value>,
+}
+
+impl AgentRunRequest {
+    pub fn new(profile_id: impl Into<String>, messages: Vec<AgentMessage>) -> Self {
+        Self {
+            profile_id: profile_id.into(),
+            messages,
+            session_id: None,
+            max_steps: DEFAULT_MAX_STEPS,
+            stream: false,
+            model: None,
+            metadata: None,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -54,5 +70,5 @@ pub struct AgentRunResult {
 }
 
 fn default_max_steps() -> u32 {
-    8
+    DEFAULT_MAX_STEPS
 }

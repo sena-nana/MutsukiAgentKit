@@ -1,6 +1,6 @@
 use mutsuki_agent_protocol::*;
 use mutsuki_agent_sdk::{
-    AgentContextBuildProtocol, orchestration_runner, result_event, runtime_failure, task_payload,
+    AgentContextBuildProtocol, orchestration_runner, service_result_event, unsupported_protocol,
 };
 use mutsuki_runtime_sdk::contracts::{RunnerResult, Task};
 use mutsuki_runtime_sdk::{AsyncRunnerAdapter, PluginBuilder, RuntimeClientRef, RuntimeResult};
@@ -32,13 +32,12 @@ pub fn runner(client: RuntimeClientRef, builder: ContextBuilder) -> AsyncRunnerA
 
 async fn run_task(builder: ContextBuilder, task: Task) -> RuntimeResult<RunnerResult> {
     match task.protocol_id.as_str() {
-        AGENT_CONTEXT_BUILD_PROTOCOL => {
-            let request: AgentContextBuildRequest = task_payload(PLUGIN_ID, &task)?;
-            let result = builder
-                .build(request)
-                .map_err(|error| runtime_failure(PLUGIN_ID, &task.task_id, error))?;
-            result_event(task.task_id, "mutsuki.agent.context.built", result)
-        }
-        _ => Ok(RunnerResult::completed(task.task_id)),
+        AGENT_CONTEXT_BUILD_PROTOCOL => service_result_event(
+            PLUGIN_ID,
+            &task,
+            "mutsuki.agent.context.built",
+            |request: AgentContextBuildRequest| builder.build(request),
+        ),
+        _ => Err(unsupported_protocol(PLUGIN_ID, &task)),
     }
 }

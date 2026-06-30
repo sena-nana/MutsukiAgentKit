@@ -1,7 +1,7 @@
 use mutsuki_agent_protocol::*;
 use mutsuki_agent_sdk::{
     AgentMemoryActivateProtocol, AgentMemoryQueryProtocol, AgentMemoryWriteProtocol,
-    orchestration_runner, result_event, runtime_failure, task_payload,
+    orchestration_runner, service_result_event, unsupported_protocol,
 };
 use mutsuki_runtime_sdk::contracts::{RunnerResult, Task};
 use mutsuki_runtime_sdk::{AsyncRunnerAdapter, PluginBuilder, RuntimeClientRef, RuntimeResult};
@@ -37,27 +37,24 @@ pub fn runner(client: RuntimeClientRef, router: MemoryRouter) -> AsyncRunnerAdap
 
 async fn run_task(router: MemoryRouter, task: Task) -> RuntimeResult<RunnerResult> {
     match task.protocol_id.as_str() {
-        AGENT_MEMORY_QUERY_PROTOCOL => {
-            let request: AgentMemoryQueryRequest = task_payload(PLUGIN_ID, &task)?;
-            let result = router
-                .query(request)
-                .map_err(|error| runtime_failure(PLUGIN_ID, &task.task_id, error))?;
-            result_event(task.task_id, "mutsuki.agent.memory.query_result", result)
-        }
-        AGENT_MEMORY_WRITE_PROTOCOL => {
-            let request: AgentMemoryWriteRequest = task_payload(PLUGIN_ID, &task)?;
-            let result = router
-                .write(request)
-                .map_err(|error| runtime_failure(PLUGIN_ID, &task.task_id, error))?;
-            result_event(task.task_id, "mutsuki.agent.memory.written", result)
-        }
-        AGENT_MEMORY_ACTIVATE_PROTOCOL => {
-            let request: AgentMemoryActivateRequest = task_payload(PLUGIN_ID, &task)?;
-            let result = router
-                .activate(request)
-                .map_err(|error| runtime_failure(PLUGIN_ID, &task.task_id, error))?;
-            result_event(task.task_id, "mutsuki.agent.memory.activated", result)
-        }
-        _ => Ok(RunnerResult::completed(task.task_id)),
+        AGENT_MEMORY_QUERY_PROTOCOL => service_result_event(
+            PLUGIN_ID,
+            &task,
+            "mutsuki.agent.memory.query_result",
+            |request: AgentMemoryQueryRequest| router.query(request),
+        ),
+        AGENT_MEMORY_WRITE_PROTOCOL => service_result_event(
+            PLUGIN_ID,
+            &task,
+            "mutsuki.agent.memory.written",
+            |request: AgentMemoryWriteRequest| router.write(request),
+        ),
+        AGENT_MEMORY_ACTIVATE_PROTOCOL => service_result_event(
+            PLUGIN_ID,
+            &task,
+            "mutsuki.agent.memory.activated",
+            |request: AgentMemoryActivateRequest| router.activate(request),
+        ),
+        _ => Err(unsupported_protocol(PLUGIN_ID, &task)),
     }
 }

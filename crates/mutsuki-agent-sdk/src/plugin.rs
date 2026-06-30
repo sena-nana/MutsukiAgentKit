@@ -1,6 +1,6 @@
 use mutsuki_agent_protocol::AgentError;
 use mutsuki_runtime_sdk::contracts::{
-    DomainEvent, ExecutionClass, RunnerResult, RunnerStatus, ScalarValue,
+    DomainEvent, ExecutionClass, RunnerResult, RunnerStatus, ScalarValue, Task,
 };
 use mutsuki_runtime_sdk::{RuntimeFailure, RuntimeResult};
 use serde::Serialize;
@@ -19,10 +19,7 @@ pub fn runtime_failure(
     RuntimeFailure::new(runtime_error)
 }
 
-pub fn task_payload<T>(
-    source: &'static str,
-    task: &mutsuki_runtime_sdk::contracts::Task,
-) -> RuntimeResult<T>
+pub fn task_payload<T>(source: &'static str, task: &Task) -> RuntimeResult<T>
 where
     T: DeserializeOwned,
 {
@@ -33,6 +30,21 @@ where
             AgentError::invalid_input(error.to_string()),
         )
     })
+}
+
+pub fn service_result_event<Request, Response>(
+    source: &'static str,
+    task: &Task,
+    event_kind: impl Into<String>,
+    service: impl FnOnce(Request) -> mutsuki_agent_protocol::AgentResult<Response>,
+) -> RuntimeResult<RunnerResult>
+where
+    Request: DeserializeOwned,
+    Response: Serialize,
+{
+    let request = task_payload(source, task)?;
+    let result = service(request).map_err(|error| runtime_failure(source, &task.task_id, error))?;
+    result_event(task.task_id.clone(), event_kind, result)
 }
 
 pub fn result_event(
@@ -67,6 +79,17 @@ pub fn failed_result(task_id: impl Into<String>, error: AgentError) -> RunnerRes
         payload: serde_json::to_value(error).unwrap_or_else(|_| serde_json::json!({})),
     });
     result
+}
+
+pub fn unsupported_protocol(source: &'static str, task: &Task) -> RuntimeFailure {
+    runtime_failure(
+        source,
+        &task.task_id,
+        AgentError::invalid_input(format!(
+            "protocol `{}` is not supported by this runner",
+            task.protocol_id
+        )),
+    )
 }
 
 pub fn orchestration_runner(
