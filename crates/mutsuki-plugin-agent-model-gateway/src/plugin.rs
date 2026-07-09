@@ -1,6 +1,7 @@
 use mutsuki_agent_protocol::*;
 use mutsuki_agent_sdk::{
-    AgentModelGenerateProtocol, orchestration_runner, service_result_event, unsupported_protocol,
+    AgentModelGenerateProtocol, AgentModelStreamProtocol, effectful_runner, service_result_event,
+    unsupported_protocol,
 };
 use mutsuki_runtime_sdk::contracts::{RunnerResult, Task};
 use mutsuki_runtime_sdk::{AsyncRunnerAdapter, PluginBuilder, RuntimeClientRef, RuntimeResult};
@@ -13,12 +14,14 @@ pub const RUNNER_ID: &str = "mutsuki.agent.model_gateway.runner";
 pub fn plugin(client: RuntimeClientRef, gateway: ModelGateway) -> PluginBuilder {
     PluginBuilder::new(PLUGIN_ID)
         .protocol::<AgentModelGenerateProtocol>()
+        .protocol::<AgentModelStreamProtocol>()
         .runner(Box::new(runner(client, gateway)))
 }
 
 pub fn runner(client: RuntimeClientRef, gateway: ModelGateway) -> AsyncRunnerAdapter {
-    let descriptor = orchestration_runner(RUNNER_ID, PLUGIN_ID)
+    let descriptor = effectful_runner(RUNNER_ID, PLUGIN_ID)
         .accepts::<AgentModelGenerateProtocol>()
+        .accepts::<AgentModelStreamProtocol>()
         .build();
     AsyncRunnerAdapter::new(
         descriptor,
@@ -37,6 +40,12 @@ async fn run_task(gateway: ModelGateway, task: Task) -> RuntimeResult<RunnerResu
             &task,
             "mutsuki.agent.model.generated",
             |request: AgentModelGenerateRequest| gateway.generate(request),
+        ),
+        AGENT_MODEL_STREAM_PROTOCOL => service_result_event(
+            PLUGIN_ID,
+            &task,
+            "mutsuki.agent.model.stream_opened",
+            |request: AgentModelStreamRequest| gateway.stream(request),
         ),
         _ => Err(unsupported_protocol(PLUGIN_ID, &task)),
     }

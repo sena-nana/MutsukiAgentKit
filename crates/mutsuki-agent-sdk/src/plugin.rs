@@ -1,8 +1,11 @@
 use mutsuki_agent_protocol::AgentError;
 use mutsuki_runtime_sdk::contracts::{
-    DomainEvent, ExecutionClass, RunnerResult, RunnerStatus, ScalarValue, Task,
+    DomainEvent, ExecutionClass, OrderingRequirement, PayloadLayout, RunnerBatchCapability,
+    RunnerControlCapability, RunnerMode, RunnerOrderingCapability, RunnerPayloadCapability,
+    RunnerPurity, RunnerResourceCapability, RunnerResult, RunnerSideEffect, RunnerStatus,
+    ScalarValue, Task, TimeoutGranularity,
 };
-use mutsuki_runtime_sdk::{RuntimeFailure, RuntimeResult};
+use mutsuki_runtime_sdk::{RunnerDescriptorBuilder, RuntimeFailure, RuntimeResult};
 use serde::Serialize;
 use serde::de::DeserializeOwned;
 
@@ -92,10 +95,60 @@ pub fn unsupported_protocol(source: &'static str, task: &Task) -> RuntimeFailure
     )
 }
 
+/// Batch-first orchestration runner with explicit capabilities.
 pub fn orchestration_runner(
     runner_id: impl Into<String>,
     plugin_id: impl Into<String>,
-) -> mutsuki_runtime_sdk::RunnerDescriptorBuilder {
-    mutsuki_runtime_sdk::RunnerDescriptorBuilder::new(runner_id, plugin_id)
-        .execution_class(ExecutionClass::Orchestration)
+) -> RunnerDescriptorBuilder {
+    agent_runner(
+        runner_id,
+        plugin_id,
+        ExecutionClass::Orchestration,
+        RunnerSideEffect::None,
+    )
+}
+
+/// Effectful runner for LLM / external provider boundaries.
+pub fn effectful_runner(
+    runner_id: impl Into<String>,
+    plugin_id: impl Into<String>,
+) -> RunnerDescriptorBuilder {
+    agent_runner(runner_id, plugin_id, ExecutionClass::Io, RunnerSideEffect::External)
+        .purity(RunnerPurity::Effectful)
+}
+
+fn agent_runner(
+    runner_id: impl Into<String>,
+    plugin_id: impl Into<String>,
+    execution_class: ExecutionClass,
+    side_effect: RunnerSideEffect,
+) -> RunnerDescriptorBuilder {
+    RunnerDescriptorBuilder::new(runner_id, plugin_id)
+        .execution_class(execution_class)
+        .batch_capability(RunnerBatchCapability {
+            mode: RunnerMode::ScalarAdapter,
+            max_batch_entries: 32,
+            max_inflight_batches: 4,
+            side_effect,
+            ..Default::default()
+        })
+        .payload_capability(RunnerPayloadCapability {
+            layouts: vec![PayloadLayout::Row],
+            preferred_layout: PayloadLayout::Row,
+            zero_copy: false,
+        })
+        .resource_capability(RunnerResourceCapability {
+            requires_resource_plan: false,
+            ..Default::default()
+        })
+        .ordering_capability(RunnerOrderingCapability {
+            default: OrderingRequirement::None,
+            supports_sequence: true,
+            supports_same_resource_order: true,
+        })
+        .control_capability(RunnerControlCapability {
+            entry_cancel: true,
+            batch_cancel: true,
+            timeout_granularity: TimeoutGranularity::Entry,
+        })
 }

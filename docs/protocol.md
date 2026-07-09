@@ -1,21 +1,15 @@
 # Protocol
 
-Protocol ids are defined in `crates/mutsuki-agent-protocol/src/lib.rs`.
+协议 id 在 `crates/mutsuki-agent-protocol`，SDK marker 在 `crates/mutsuki-agent-sdk/src/protocol.rs`。
 
-The MVP surface is:
+## Issue #1 映射
 
-- `mutsuki.agent/run@1`
-- `mutsuki.agent.loop/step@1`
-- `mutsuki.agent.context/build@1`
-- `mutsuki.agent.tool/list@1`
-- `mutsuki.agent.tool/execute@1`
-- `mutsuki.agent.session/create@1`
-- `mutsuki.agent.session/get@1`
-- `mutsuki.agent.session/append@1`
-- `mutsuki.agent.session/snapshot@1`
-- `mutsuki.agent.memory/query@1`
-- `mutsuki.agent.memory/write@1`
-- `mutsuki.agent.memory/activate@1`
-- `mutsuki.agent.model/generate@1`
-- `mutsuki.agent.prompt/render@1`
-- `mutsuki.agent.prompt/get@1`
+| 草案 | 稳定 id |
+| --- | --- |
+| plan | `mutsuki.agent/run@1` |
+| step | `mutsuki.agent.loop/step@1` |
+| tool.call | `mutsuki.agent.tool/execute@1` |
+| memory.query / write | `mutsuki.agent.memory/query@1` · `.../write@1` |
+| llm.complete / stream | `mutsuki.agent.model/generate@1` · `.../stream@1` |
+
+另有 context / session / prompt / memory.activate 等 MVP 协议。memory / stream 结果可携带 `ResourceRef` / `ResourceCellRef`。

@@ -1,5 +1,3 @@
 # Model Gateway
 
-`mutsuki-plugin-agent-model-gateway` routes generate requests to registered Rust `ModelProvider` implementations.
-
-The default provider is a mock provider for local conformance and examples. External providers should be Rust plugins or separate model plugin crates.
+`mutsuki.agent.model/generate@1` 与 `.../stream@1`，effectful runner。stream 返回 `ResourceRef`。默认 mock provider 仅用于本地 conformance。

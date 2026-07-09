@@ -30,6 +30,7 @@ license = "MIT"
 mutsuki-agent-protocol = { path = "crates/mutsuki-agent-protocol" }
 mutsuki-agent-sdk = { path = "crates/mutsuki-agent-sdk" }
 mutsuki-agent-macros = { path = "crates/mutsuki-agent-macros" }
+mutsuki-runtime-contracts = { path = "../NanoBot/crates/mutsuki-runtime-contracts" }
 mutsuki-runtime-sdk = { path = "../NanoBot/crates/mutsuki-runtime-sdk" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

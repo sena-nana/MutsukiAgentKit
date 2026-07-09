@@ -1,10 +1,14 @@
 use std::collections::BTreeMap;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
 use mutsuki_agent_protocol::{
-    AgentError, AgentMessage, AgentModelGenerateRequest, AgentModelGenerateResult, AgentResult,
-    AgentRole, AgentUsage,
+    AgentError, AgentMessage, AgentModelGenerateRequest, AgentModelGenerateResult,
+    AgentModelStreamRequest, AgentModelStreamResult, AgentResult, AgentRole, AgentUsage,
 };
+use mutsuki_agent_sdk::stream_resource_ref;
+
+use crate::PLUGIN_ID;
 
 pub trait ModelProvider: Send + Sync {
     fn provider_id(&self) -> &str;
@@ -16,6 +20,7 @@ pub trait ModelProvider: Send + Sync {
 pub struct ModelGateway {
     default_provider: String,
     providers: Arc<Mutex<BTreeMap<String, Arc<dyn ModelProvider>>>>,
+    next_stream: Arc<AtomicU64>,
 }
 
 impl Default for ModelGateway {
@@ -23,6 +28,7 @@ impl Default for ModelGateway {
         let gateway = Self {
             default_provider: "mock".into(),
             providers: Arc::new(Mutex::new(BTreeMap::new())),
+            next_stream: Arc::new(AtomicU64::new(0)),
         };
         gateway.register(Arc::new(MockModelProvider::default()));
         gateway
@@ -57,6 +63,14 @@ impl ModelGateway {
                 ))
             })?;
         provider.generate(request)
+    }
+
+    pub fn stream(&self, request: AgentModelStreamRequest) -> AgentResult<AgentModelStreamResult> {
+        let _ = self.generate(request.request)?;
+        let stream_id = self.next_stream.fetch_add(1, Ordering::Relaxed) + 1;
+        Ok(AgentModelStreamResult {
+            stream: stream_resource_ref(PLUGIN_ID, format!("stream-{stream_id}")),
+        })
     }
 }
 
@@ -102,6 +116,7 @@ impl ModelProvider for MockModelProvider {
                     + 6,
             },
             raw: None,
+            output_resource: None,
         })
     }
 }

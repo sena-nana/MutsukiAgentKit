@@ -16,6 +16,7 @@ impl AgentToolContext {
         self.ctx.task_id()
     }
 
+    /// Nested calls inherit `trace_id` / `correlation_id` from the runner context.
     pub fn call<P>(&self, input: impl Serialize) -> CallFuture
     where
         P: mutsuki_runtime_sdk::SdkProtocol,

@@ -6,6 +6,9 @@ use mutsuki_agent_protocol::{
     AgentError, AgentMemoryActivateRequest, AgentMemoryQueryRequest, AgentMemoryQueryResult,
     AgentMemoryRecord, AgentMemoryWriteRequest, AgentResult,
 };
+use mutsuki_agent_sdk::{memory_cell_ref, memory_resource_ref};
+
+use crate::PLUGIN_ID;
 
 #[derive(Clone, Default)]
 pub struct MemoryRouter {
@@ -64,12 +67,15 @@ impl MemoryRouter {
             return Err(AgentError::invalid_input("memory text is required"));
         }
         let id = self.inner.next_id.fetch_add(1, Ordering::Relaxed) + 1;
+        let memory_id = format!("agent-memory-{id}");
         let record = AgentMemoryRecord {
-            memory_id: format!("agent-memory-{id}"),
+            memory_id: memory_id.clone(),
             text: request.text,
             tags: request.tags,
             score: 1.0,
             metadata: request.metadata,
+            resource: Some(memory_resource_ref(PLUGIN_ID, &memory_id)),
+            cell: Some(memory_cell_ref(PLUGIN_ID, &memory_id)),
         };
         self.inner
             .records

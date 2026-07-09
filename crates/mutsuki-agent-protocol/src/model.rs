@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::{AgentMessage, AgentUsage};
+use crate::{AgentMessage, AgentUsage, ResourceRef};
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AgentModelGenerateRequest {
@@ -24,9 +24,16 @@ pub struct AgentModelGenerateResult {
     pub usage: AgentUsage,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub raw: Option<Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub output_resource: Option<ResourceRef>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AgentModelStreamRequest {
     pub request: AgentModelGenerateRequest,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct AgentModelStreamResult {
+    pub stream: ResourceRef,
 }
