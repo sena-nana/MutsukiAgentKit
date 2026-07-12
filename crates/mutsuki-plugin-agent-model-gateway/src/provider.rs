@@ -76,21 +76,7 @@ impl ModelGateway {
         &self,
         request: AgentModelGenerateRequest,
     ) -> AgentResult<AgentModelGenerateResult> {
-        let provider_id = request
-            .provider_hint
-            .clone()
-            .unwrap_or_else(|| self.default_provider.clone());
-        let provider = self
-            .providers
-            .lock()
-            .expect("model gateway mutex poisoned")
-            .get(&provider_id)
-            .cloned()
-            .ok_or_else(|| {
-                AgentError::provider_unavailable(format!(
-                    "model provider `{provider_id}` not registered"
-                ))
-            })?;
+        let provider = self.inline_provider(&request)?;
         provider.generate(request)
     }
 
@@ -111,8 +97,40 @@ impl ModelGateway {
         &self,
         request: AgentModelGenerateRequest,
     ) -> AgentResult<AgentModelGenerateResult> {
-        let provider = self.provider(&request)?;
+        let provider = self.inline_provider(&request)?;
         provider.generate_async(request).await
+    }
+
+    pub(crate) fn generate_effect(
+        &self,
+        request: AgentModelGenerateRequest,
+    ) -> AgentResult<AgentModelGenerateResult> {
+        let provider = self.effect_provider(&request)?;
+        provider.generate(request)
+    }
+
+    pub(crate) async fn generate_effect_async(
+        &self,
+        request: AgentModelGenerateRequest,
+    ) -> AgentResult<AgentModelGenerateResult> {
+        let provider = self.effect_provider(&request)?;
+        provider.generate_async(request).await
+    }
+
+    pub(crate) fn stream_effect(
+        &self,
+        request: AgentModelStreamRequest,
+    ) -> AgentResult<AgentModelStreamResult> {
+        let generated = self.generate_effect(request.request)?;
+        Ok(self.store_stream(generated))
+    }
+
+    pub(crate) async fn stream_effect_async(
+        &self,
+        request: AgentModelStreamRequest,
+    ) -> AgentResult<AgentModelStreamResult> {
+        let generated = self.generate_effect_async(request.request).await?;
+        Ok(self.store_stream(generated))
     }
 
     pub async fn stream_async(
@@ -170,6 +188,46 @@ impl ModelGateway {
                     "model provider `{provider_id}` not registered"
                 ))
             })
+    }
+
+    fn inline_provider(
+        &self,
+        request: &AgentModelGenerateRequest,
+    ) -> AgentResult<Arc<dyn ModelProvider>> {
+        let provider = self.provider(request)?;
+        if provider.execution() != ModelProviderExecution::InlineDeterministic {
+            return Err(AgentError::new(
+                "agent.model.effect_required",
+                "effectful model provider must run through the model effect runner",
+            ));
+        }
+        Ok(provider)
+    }
+
+    fn effect_provider(
+        &self,
+        request: &AgentModelGenerateRequest,
+    ) -> AgentResult<Arc<dyn ModelProvider>> {
+        let provider = self.provider(request)?;
+        if provider.execution() != ModelProviderExecution::HttpEffect {
+            return Err(AgentError::new(
+                "agent.model.effect_provider_required",
+                "model effect runner requires an effectful provider",
+            ));
+        }
+        Ok(provider)
+    }
+
+    fn store_stream(&self, generated: AgentModelGenerateResult) -> AgentModelStreamResult {
+        let stream_id = self.next_stream.fetch_add(1, Ordering::Relaxed) + 1;
+        let slot = format!("stream-{stream_id}");
+        self.streams
+            .lock()
+            .expect("model stream mutex poisoned")
+            .insert(slot.clone(), generated.message.content);
+        AgentModelStreamResult {
+            stream: stream_resource_ref(PLUGIN_ID, slot),
+        }
     }
 }
 
@@ -526,6 +584,40 @@ mod http_tests {
     use std::net::TcpListener;
     use std::sync::atomic::{AtomicUsize, Ordering};
     use std::time::Duration;
+
+    #[test]
+    fn inline_gateway_rejects_http_effect_provider_without_network_io() {
+        let gateway = ModelGateway::with_default_provider("http");
+        gateway.register(Arc::new(
+            HttpModelProvider::new(
+                HttpModelProviderOptions {
+                    provider_id: "http".into(),
+                    endpoint: "http://127.0.0.1:9/generate".into(),
+                    default_model: "test".into(),
+                    timeout_ms: 10,
+                    max_retries: 0,
+                },
+                "TEST_SECRET",
+            )
+            .unwrap(),
+        ));
+
+        let error = gateway
+            .generate(AgentModelGenerateRequest {
+                model: "test".into(),
+                messages: vec![AgentMessage::user("must route as effect")],
+                temperature: None,
+                max_output_tokens: None,
+                provider_hint: None,
+                metadata: None,
+                result_protocol_id: None,
+                result_context: None,
+                session_id: None,
+            })
+            .unwrap_err();
+
+        assert_eq!(error.code, "agent.model.effect_required");
+    }
 
     #[tokio::test]
     async fn http_provider_retries_once_and_redacts_secret() {

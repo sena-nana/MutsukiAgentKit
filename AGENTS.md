@@ -25,6 +25,7 @@ Python Runner SDK 或具体产品装配。
 6. manifest、schema、SDK marker 和真实 Runner 必须同步；缺失 backend/capability 时 fail loud。
 7. 禁止占位公开能力、复制上游实现、生产 fallback 或兼容 shim。
 8. 禁止仓库外 Cargo `path`/本地 `[patch]`；跨仓库依赖使用远端 Git URL 和固定 `rev`。
+9. effectful 模型 Provider 只能由模型 effect Runner 调用；普通 ModelGateway inline API 必须拒绝网络 Provider。
 
 ## 验证
 

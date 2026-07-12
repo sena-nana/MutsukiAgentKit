@@ -212,11 +212,11 @@ async fn run_async(
 ) -> AgentResult<EffectValue> {
     match request {
         AgentModelHttpEffectRequest::Generate(request) => gateway
-            .generate_async(request)
+            .generate_effect_async(request)
             .await
             .map(EffectValue::Generated),
         AgentModelHttpEffectRequest::Stream(request) => gateway
-            .stream_async(request)
+            .stream_effect_async(request)
             .await
             .map(EffectValue::Streamed),
     }
@@ -228,11 +228,11 @@ fn run_blocking(
 ) -> Result<EffectValue, mutsuki_runtime_sdk::contracts::RuntimeError> {
     match request {
         AgentModelHttpEffectRequest::Generate(request) => gateway
-            .generate(request)
+            .generate_effect(request)
             .map(EffectValue::Generated)
             .map_err(|error| standalone_error(error)),
         AgentModelHttpEffectRequest::Stream(request) => gateway
-            .stream(request)
+            .stream_effect(request)
             .map(EffectValue::Streamed)
             .map_err(|error| standalone_error(error)),
     }
