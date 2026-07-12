@@ -1,19 +1,14 @@
-# Agent Plugin Skill
+---
+name: plugins
+description: Implement or change AgentLoop, context, session, tool router, memory router, model gateway, prompt, model provider integration, or native Agent Runner and bundle behavior.
+---
 
-Use this when adding or changing Rust native Agent plugins.
+# Agent Plugins
 
-## Rules
+- Put deterministic behavior behind typed service APIs and expose real runtime Runner/bundle entrypoints.
+- Route plugin interaction through declared Agent protocols; direct composition is only for local deterministic tests or embedding.
+- Keep runners batch-first and isolate each entry failure.
+- Obtain Provider credentials through Host secret injection and keep clients inside gateways.
+- Emit structured results/events and declare matching manifest capabilities.
 
-- Every plugin crate must expose a pure service API and a runtime `plugin(client, service)` or `runner(client, service)` path.
-- Runtime entrypoints must register `ProtocolSpec` marker types and stable runner descriptors.
-- Plugin-to-plugin behavior should prefer Mutsuki protocols. Direct service composition is acceptable for local deterministic behavior and tests, but do not hide it as runtime routing.
-- Output from runner tasks should be serialized into domain events until the runtime SDK exposes typed output value reads.
-- Do not add placeholder integrations. A provider/router/session path must actually store, route, render, or generate something.
-
-## Checklist
-
-1. Put deterministic behavior in a service module.
-2. Parse task payloads into protocol crate DTOs.
-3. Convert service errors into runtime failures with Agent error codes.
-4. Emit a domain event containing the typed result.
-5. Update the plugin manifest and any relevant conformance helper.
+Do not move Core scheduling, Host lifecycle or Bot platform translation into Agent plugins.

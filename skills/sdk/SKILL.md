@@ -1,17 +1,14 @@
-# Agent SDK And Macro Skill
+---
+name: sdk
+description: Change Agent Rust SDK clients, typed builders, protocol markers, task helpers, bundle ergonomics, or proc macros such as agent tool metadata generation.
+---
 
-Use this when changing Rust SDK ergonomics, Agent clients, builders, or proc macros.
+# Agent SDK And Macros
 
-## Rules
+- Wrap Mutsuki protocols and RuntimeClient; do not build a separate Agent runtime.
+- Prefer typed DTOs and builders over free-form JSON.
+- Return and consume `TaskHandle` semantics while preserving trace, correlation and cancellation.
+- Keep macro output small: metadata, descriptors and compile-time validation only.
+- Check `mutsuki-runtime-sdk` before duplicating a runtime primitive.
 
-- SDK helpers must wrap Mutsuki runtime protocols; they must not create a second Agent runtime.
-- `#[agent_tool]` attaches Agent metadata to a Rust protocol handler. It does not replace Mutsuki task dispatch.
-- Keep macro output small and inspectable: descriptor functions, profile constants, or compile-time validation.
-- Prefer typed builders over free-form JSON when the protocol crate has a struct.
-
-## Checklist
-
-1. Check whether `mutsuki-runtime-sdk` already exposes the runtime primitive.
-2. Add SDK wrappers in `crates/mutsuki-agent-sdk/src/`.
-3. Add macro expansion in `crates/mutsuki-agent-macros/src/lib.rs` only if repeated handwritten descriptors would be error-prone.
-4. Verify `cargo test -p mutsuki-agent-sdk -p mutsuki-agent-macros` when possible.
+Test public SDK flows and macro expansion behavior.

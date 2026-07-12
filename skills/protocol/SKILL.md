@@ -1,19 +1,14 @@
-# Agent Protocol Skill
+---
+name: protocol
+description: Change Agent protocol DTOs, protocol identifiers, JSON schemas, error codes, manifest providers or consumers, contract surfaces, or wire compatibility.
+---
 
-Use this when changing Agent protocol DTOs, protocol ids, JSON schemas, or manifest protocol lists.
+# Agent Protocol
 
-## Rules
+- Keep all Agent wire DTOs and protocol IDs in `mutsuki-agent-protocol`.
+- Mirror each callable protocol with typed SDK markers and update schemas plus manifests together.
+- Reuse Core task, batch, resource, effect, trace and error semantics.
+- Keep DTOs independent of Provider clients, Host services and language objects.
+- Version breaking changes and update every implementing Runner in the same change.
 
-- Keep all wire DTOs in `crates/mutsuki-agent-protocol`.
-- Add or rename protocol ids only in `crates/mutsuki-agent-protocol/src/lib.rs`.
-- Mirror every protocol id with a marker type in `crates/mutsuki-agent-sdk/src/protocol.rs`.
-- Update `schemas/` and `manifests/` in the same change when payloads or protocol surfaces change.
-- Do not introduce Python protocol wrappers in this repository.
-
-## Checklist
-
-1. Define the typed request/result structs in the protocol crate.
-2. Export them from `crates/mutsuki-agent-protocol/src/lib.rs`.
-3. Add or update SDK protocol marker types.
-4. Update manifests for providers and consumers.
-5. Add behavior-level tests only when the protocol change affects runtime behavior.
+Test serialization, validation and manifest surface consistency.
