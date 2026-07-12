@@ -38,5 +38,7 @@ pub const AGENT_MEMORY_WRITE_PROTOCOL: &str = "mutsuki.agent.memory/write@1";
 pub const AGENT_MEMORY_ACTIVATE_PROTOCOL: &str = "mutsuki.agent.memory/activate@1";
 pub const AGENT_MODEL_GENERATE_PROTOCOL: &str = "mutsuki.agent.model/generate@1";
 pub const AGENT_MODEL_STREAM_PROTOCOL: &str = "mutsuki.agent.model/stream@1";
+pub const AGENT_MODEL_HTTP_EFFECT_PROTOCOL: &str = "effect.mutsuki.agent.model/http@1";
+pub const AGENT_MODEL_POLL_PROTOCOL: &str = "mutsuki.agent.model/poll@1";
 pub const AGENT_PROMPT_RENDER_PROTOCOL: &str = "mutsuki.agent.prompt/render@1";
 pub const AGENT_PROMPT_GET_PROTOCOL: &str = "mutsuki.agent.prompt/get@1";

@@ -29,6 +29,10 @@ pub struct AgentRunRequest {
     pub model: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub metadata: Option<Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result_protocol_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result_context: Option<Value>,
 }
 
 impl AgentRunRequest {
@@ -41,6 +45,8 @@ impl AgentRunRequest {
             stream: false,
             model: None,
             metadata: None,
+            result_protocol_id: None,
+            result_context: None,
         }
     }
 }

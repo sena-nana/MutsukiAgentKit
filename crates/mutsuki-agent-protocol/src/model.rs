@@ -15,6 +15,12 @@ pub struct AgentModelGenerateRequest {
     pub provider_hint: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub metadata: Option<Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result_protocol_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub result_context: Option<Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session_id: Option<String>,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -36,4 +42,20 @@ pub struct AgentModelStreamRequest {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct AgentModelStreamResult {
     pub stream: ResourceRef,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub struct AgentModelResultCallback {
+    pub result: AgentModelGenerateResult,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub context: Option<Value>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub session_id: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "operation", content = "request", rename_all = "snake_case")]
+pub enum AgentModelHttpEffectRequest {
+    Generate(AgentModelGenerateRequest),
+    Stream(AgentModelStreamRequest),
 }

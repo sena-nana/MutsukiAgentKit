@@ -3,7 +3,11 @@
 use mutsuki_runtime_sdk::contracts::Task;
 
 /// Attach `trace_id` / `correlation_id` before submit via RuntimeClient / TaskSubmitter.
-pub fn with_trace(mut task: Task, trace_id: Option<String>, correlation_id: Option<String>) -> Task {
+pub fn with_trace(
+    mut task: Task,
+    trace_id: Option<String>,
+    correlation_id: Option<String>,
+) -> Task {
     task.trace_id = trace_id;
     task.correlation_id = correlation_id;
     task

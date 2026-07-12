@@ -113,8 +113,13 @@ pub fn effectful_runner(
     runner_id: impl Into<String>,
     plugin_id: impl Into<String>,
 ) -> RunnerDescriptorBuilder {
-    agent_runner(runner_id, plugin_id, ExecutionClass::Io, RunnerSideEffect::External)
-        .purity(RunnerPurity::Effectful)
+    agent_runner(
+        runner_id,
+        plugin_id,
+        ExecutionClass::Io,
+        RunnerSideEffect::External,
+    )
+    .purity(RunnerPurity::Effectful)
 }
 
 fn agent_runner(

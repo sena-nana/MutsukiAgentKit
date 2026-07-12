@@ -11,6 +11,7 @@ members = [
     "crates/mutsuki-plugin-agent-model-gateway",
     "crates/mutsuki-plugin-agent-prompt",
     "crates/mutsuki-agent-testkit",
+    "crates/mutsuki-agent-bundle",
 ]
 resolver = "2"
 exclude = [
@@ -30,11 +31,14 @@ license = "MIT"
 mutsuki-agent-protocol = { path = "crates/mutsuki-agent-protocol" }
 mutsuki-agent-sdk = { path = "crates/mutsuki-agent-sdk" }
 mutsuki-agent-macros = { path = "crates/mutsuki-agent-macros" }
-mutsuki-runtime-contracts = { path = "../NanoBot/crates/mutsuki-runtime-contracts" }
-mutsuki-runtime-sdk = { path = "../NanoBot/crates/mutsuki-runtime-sdk" }
+mutsuki-runtime-contracts = { path = "../MutsukiCore/crates/mutsuki-runtime-contracts" }
+mutsuki-runtime-core = { path = "../MutsukiCore/crates/mutsuki-runtime-core" }
+mutsuki-runtime-sdk = { path = "../MutsukiCore/crates/mutsuki-runtime-sdk" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "2.0"
+reqwest = { version = "0.13", default-features = false, features = ["blocking", "json", "rustls"] }
+tokio = { version = "1", features = ["time", "macros", "rt-multi-thread"] }
 proc-macro2 = "1.0"
 quote = "1.0"
 syn = { version = "2.0", features = ["full", "parsing"] }

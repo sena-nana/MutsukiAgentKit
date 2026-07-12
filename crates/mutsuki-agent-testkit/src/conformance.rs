@@ -3,17 +3,20 @@ use std::sync::Arc;
 use mutsuki_agent_protocol::{
     AgentMemoryQueryRequest, AgentMemoryWriteRequest, AgentMessage, AgentModelGenerateRequest,
     AgentModelStreamRequest, AgentPromptRenderRequest, AgentPromptTemplate, AgentRunRequest,
-    AgentRunStatus, AgentSessionAppendRequest, AgentSessionCreateRequest,
+    AgentRunStatus, AgentSessionAppendRequest, AgentSessionCreateRequest, AgentToolExecuteRequest,
+    AgentToolListRequest,
 };
 use mutsuki_plugin_agent_loop::{
-    plugin as loop_plugin, AgentLoop, PLUGIN_ID as LOOP_PLUGIN_ID, RUNNER_ID as LOOP_RUNNER_ID,
+    AgentLoop, PLUGIN_ID as LOOP_PLUGIN_ID, RUNNER_ID as LOOP_RUNNER_ID, plugin as loop_plugin,
 };
 use mutsuki_plugin_agent_memory_router::MemoryRouter;
 use mutsuki_plugin_agent_model_gateway::ModelGateway;
 use mutsuki_plugin_agent_prompt::PromptRegistry;
 use mutsuki_plugin_agent_session::SessionStore;
-use mutsuki_runtime_sdk::contracts::{RunnerMode, TaskBatch, TaskHandle, TaskOutcome};
+use mutsuki_runtime_sdk::contracts::{RunnerMode, Task, TaskBatch, TaskHandle, TaskOutcome};
 use mutsuki_runtime_sdk::{RuntimeClient, RuntimeResult};
+
+use crate::{echo_tool_descriptor, execute_echo_tool};
 
 struct NoopClient;
 
@@ -33,6 +36,7 @@ pub fn run_basic_conformance() {
     model_stream_round_trip();
     prompt_round_trip();
     agent_loop_round_trip();
+    tool_round_trip();
     batch_first_runner_descriptor();
 }
 
@@ -52,6 +56,51 @@ pub fn session_round_trip() {
         .expect("session can append messages");
     assert_eq!(session.messages.len(), 1);
     assert_eq!(session.turn_count, 1);
+    assert_eq!(session.resource.resource_kind, "mutsuki.agent.session");
+    assert_eq!(session.cell.resource_kind, "mutsuki.agent.session");
+
+    let other = store
+        .create(AgentSessionCreateRequest {
+            profile_id: "test.profile".into(),
+            title: Some("Other".into()),
+        })
+        .expect("second session can be created");
+    assert_ne!(session.session_id, other.session_id);
+    assert_ne!(session.resource.ref_id, other.resource.ref_id);
+    assert_ne!(session.cell.cell_id, other.cell.cell_id);
+    assert!(other.messages.is_empty());
+    assert_eq!(other.turn_count, 0);
+    let other = store
+        .append(AgentSessionAppendRequest {
+            session_id: other.session_id,
+            messages: vec![AgentMessage::user("other")],
+        })
+        .expect("second session can append independently");
+    let first = store
+        .get(mutsuki_agent_protocol::AgentSessionGetRequest {
+            session_id: session.session_id,
+        })
+        .expect("first session remains readable");
+    assert_eq!(first.messages[0].content, "hello");
+    assert_eq!(other.messages[0].content, "other");
+    assert_ne!(first.resource.ref_id, other.resource.ref_id);
+}
+
+pub fn tool_round_trip() {
+    let registry = mutsuki_plugin_agent_tool_router::ToolRegistry::default();
+    registry
+        .register(echo_tool_descriptor())
+        .expect("test tool can register");
+    let listed = registry.list(AgentToolListRequest::default());
+    assert_eq!(listed.tools.len(), 1);
+    assert!(!listed.tools[0].requires_approval);
+    let result = execute_echo_tool(AgentToolExecuteRequest {
+        name: "echo".into(),
+        input: serde_json::json!({"value": "hello"}),
+        session_id: Some("session-a".into()),
+    });
+    assert_eq!(result.output, serde_json::json!({"value": "hello"}));
+    assert!(result.approved);
 }
 
 pub fn memory_round_trip() {
@@ -85,6 +134,9 @@ pub fn model_stream_round_trip() {
             max_output_tokens: None,
             provider_hint: None,
             metadata: None,
+            result_protocol_id: None,
+            result_context: None,
+            session_id: None,
         })
         .expect("model generate works");
     let streamed = gateway
@@ -96,10 +148,22 @@ pub fn model_stream_round_trip() {
                 max_output_tokens: None,
                 provider_hint: None,
                 metadata: None,
+                result_protocol_id: None,
+                result_context: None,
+                session_id: None,
             },
         })
         .expect("model stream opens ResourceRef");
     assert_eq!(streamed.stream.resource_kind, "mutsuki.agent.stream");
+    assert_eq!(
+        gateway.read_stream(&streamed.stream).as_deref(),
+        Some("Echo: stream")
+    );
+    assert!(
+        !serde_json::to_string(&streamed)
+            .unwrap()
+            .contains("Echo: stream")
+    );
 }
 
 pub fn prompt_round_trip() {
@@ -121,19 +185,60 @@ pub fn prompt_round_trip() {
 }
 
 pub fn agent_loop_round_trip() {
-    let result = AgentLoop::default()
-        .run(AgentRunRequest {
-            profile_id: "test.profile".into(),
-            messages: vec![AgentMessage::user("ping")],
-            session_id: None,
-            max_steps: 1,
-            stream: false,
-            model: Some("mock".into()),
-            metadata: None,
-        })
+    let agent_loop = AgentLoop::default();
+    let request = AgentRunRequest {
+        profile_id: "test.profile".into(),
+        messages: vec![AgentMessage::user("ping")],
+        session_id: Some("session-a".into()),
+        max_steps: 3,
+        stream: false,
+        model: Some("mock".into()),
+        metadata: Some(serde_json::json!({
+            "tool": {"name": "echo", "input": {"value": "ping"}}
+        })),
+        result_protocol_id: None,
+        result_context: None,
+    };
+    let result = agent_loop
+        .run(request.clone())
         .expect("agent loop can complete");
     assert_eq!(result.status, AgentRunStatus::Completed);
     assert_eq!(result.messages.len(), 2);
+    let mut parent = Task::new(
+        "agent-run",
+        mutsuki_agent_protocol::AGENT_RUN_PROTOCOL,
+        serde_json::json!({}),
+    );
+    parent.trace_id = Some("trace-a".into());
+    parent.correlation_id = Some("correlation-a".into());
+    parent.registry_generation = 7;
+    let tasks = agent_loop
+        .plan_tasks(&request, &parent)
+        .expect("agent loop creates execution tasks");
+    assert_eq!(tasks.len(), 3);
+    assert_eq!(
+        tasks[0].protocol_id,
+        mutsuki_agent_protocol::AGENT_MODEL_GENERATE_PROTOCOL
+    );
+    assert_eq!(
+        tasks[1].protocol_id,
+        mutsuki_agent_protocol::AGENT_TOOL_EXECUTE_PROTOCOL
+    );
+    assert_eq!(
+        tasks[2].protocol_id,
+        mutsuki_agent_protocol::AGENT_LOOP_STEP_PROTOCOL
+    );
+    assert!(
+        tasks
+            .iter()
+            .all(|task| task.trace_id.as_deref() == Some("trace-a"))
+    );
+    assert!(
+        tasks
+            .iter()
+            .all(|task| task.correlation_id.as_deref() == Some("correlation-a"))
+    );
+    assert!(tasks.iter().all(|task| task.registry_generation == 7));
 }
 
 pub fn batch_first_runner_descriptor() {

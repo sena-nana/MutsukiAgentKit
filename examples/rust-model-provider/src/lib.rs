@@ -15,6 +15,7 @@ impl ModelProvider for StaticModelProvider {
             message: AgentMessage::assistant(format!("static model: {}", request.model)),
             usage: AgentUsage::default(),
             raw: None,
+            output_resource: None,
         })
     }
 }

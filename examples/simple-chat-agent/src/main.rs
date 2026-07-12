@@ -11,6 +11,8 @@ fn main() {
             stream: false,
             model: Some("mock".into()),
             metadata: None,
+            result_protocol_id: None,
+            result_context: None,
         })
         .expect("agent run succeeds");
 

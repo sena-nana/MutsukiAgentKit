@@ -10,6 +10,8 @@
     "max_steps": { "type": "integer", "minimum": 0, "default": 8 },
     "stream": { "type": "boolean", "default": false },
     "model": { "type": ["string", "null"] },
-    "metadata": true
+    "metadata": true,
+    "result_protocol_id": { "type": ["string", "null"] },
+    "result_context": true
   }
 }

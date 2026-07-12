@@ -6,6 +6,9 @@ use mutsuki_agent_protocol::{
     AgentError, AgentResult, AgentSession, AgentSessionAppendRequest, AgentSessionCreateRequest,
     AgentSessionGetRequest, AgentSessionSnapshotRequest,
 };
+use mutsuki_agent_sdk::{session_cell_ref, session_resource_ref};
+
+use crate::PLUGIN_ID;
 
 #[derive(Clone, Default)]
 pub struct SessionStore {
@@ -25,7 +28,12 @@ impl SessionStore {
         }
         let id = self.inner.next_id.fetch_add(1, Ordering::Relaxed) + 1;
         let session_id = format!("agent-session-{id}");
-        let mut session = AgentSession::new(session_id.clone(), request.profile_id);
+        let mut session = AgentSession::new(
+            session_id.clone(),
+            request.profile_id,
+            session_resource_ref(PLUGIN_ID, &session_id),
+            session_cell_ref(PLUGIN_ID, &session_id),
+        );
         session.title = request.title;
         self.inner
             .sessions

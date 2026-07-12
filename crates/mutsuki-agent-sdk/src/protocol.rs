@@ -31,5 +31,10 @@ protocol_marker!(AgentMemoryWriteProtocol, AGENT_MEMORY_WRITE_PROTOCOL);
 protocol_marker!(AgentMemoryActivateProtocol, AGENT_MEMORY_ACTIVATE_PROTOCOL);
 protocol_marker!(AgentModelGenerateProtocol, AGENT_MODEL_GENERATE_PROTOCOL);
 protocol_marker!(AgentModelStreamProtocol, AGENT_MODEL_STREAM_PROTOCOL);
+protocol_marker!(
+    AgentModelHttpEffectProtocol,
+    AGENT_MODEL_HTTP_EFFECT_PROTOCOL
+);
+protocol_marker!(AgentModelPollProtocol, AGENT_MODEL_POLL_PROTOCOL);
 protocol_marker!(AgentPromptRenderProtocol, AGENT_PROMPT_RENDER_PROTOCOL);
 protocol_marker!(AgentPromptGetProtocol, AGENT_PROMPT_GET_PROTOCOL);

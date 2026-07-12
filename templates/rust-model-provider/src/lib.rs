@@ -15,6 +15,7 @@ impl ModelProvider for MyModelProvider {
             message: AgentMessage::assistant(format!("handled by {}", request.model)),
             usage: AgentUsage::default(),
             raw: None,
+            output_resource: None,
         })
     }
 }
